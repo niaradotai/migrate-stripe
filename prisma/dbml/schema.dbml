@@ -1,0 +1,422 @@
+//// ------------------------------------------------------
+//// THIS FILE WAS AUTOMATICALLY GENERATED (DO NOT MODIFY)
+//// ------------------------------------------------------
+
+Table accounts {
+  id String [pk]
+  email String [unique, not null]
+  firstName String
+  lastName String
+  clerkUserId String [unique, not null]
+  stripeCustomerId String [unique]
+  stripeSubscriptionId String
+  stripePlanId String
+  credits Int [default: 0]
+  documentCredits Int [default: 0]
+  subscriptionStartDate DateTime
+  subscriptionEndDate DateTime
+  isActive Boolean [not null, default: false]
+  isBeta Boolean [not null, default: false]
+  isTrial Boolean [not null, default: false]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  conversations conversations [not null]
+  entries entries [not null]
+  organization organizations
+  ownedOrganization organizations
+  organizationId String
+  projects projects [not null]
+  documents documents [not null]
+  Usage usage [not null]
+  BulkContent bulk_content [not null]
+}
+
+Table conversations {
+  id String [pk]
+  title String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  function String
+  chatHistory String
+  account accounts [not null]
+  accountId String [not null]
+  messages messages [not null]
+  organization organizations
+  organizationId String
+  model models
+  modelId String
+}
+
+Table messages {
+  id String [pk]
+  type Role [not null]
+  content String [not null]
+  wordCount Int [not null]
+  completion String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  conversation conversations [not null]
+  conversationId String [not null]
+}
+
+Table entries {
+  id String [pk]
+  content String [not null]
+  wordCount Int [not null]
+  completion Json
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  templateId String [not null]
+  account accounts [not null]
+  accountId String [not null]
+  organization organizations
+  organizationId String
+}
+
+Table organizations {
+  id String [pk]
+  clerkOrgId String [unique]
+  name String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  ownerAccount accounts [not null]
+  ownerAccountId String [unique, not null]
+  members accounts [not null]
+  entries entries [not null]
+  conversations conversations [not null]
+  projects projects [not null]
+  documents documents [not null]
+  Usage usage [not null]
+  BulkContent bulk_content [not null]
+}
+
+Table projects {
+  id String [pk]
+  name String [not null]
+  archived Boolean [not null, default: false]
+  account accounts [not null]
+  accountId String [not null]
+  organization organizations
+  organizationId String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  documents documents [not null]
+}
+
+Table countries {
+  isoCode String [pk]
+  name String [not null]
+  isActive Boolean [not null, default: true]
+  documents documents [not null]
+  contents contents [not null]
+}
+
+Table languages {
+  isoCode String [pk]
+  name String [not null]
+  isActive Boolean [not null, default: true]
+  documents documents [not null]
+  contents contents [not null]
+}
+
+Table documents {
+  id String [pk]
+  keyword String [not null]
+  country countries [not null]
+  language languages [not null]
+  project projects [not null]
+  projectId String [not null]
+  account accounts [not null]
+  accountId String [not null]
+  organization organizations
+  organizationId String
+  status DocumentStatus [not null]
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+  briefing contents
+  briefingId String [unique]
+  websites documents_websites [not null]
+  countryIsoCode String [not null]
+  languageIsoCode String [not null]
+  serpSearchId String
+  serpSearchDate DateTime
+  referencesAnalysisStatus DocumentReferencesAnalysisStatus [not null, default: 'INITIAL']
+  DocumentUsage document_usage [not null]
+}
+
+Table documents_websites {
+  document documents [not null]
+  documentId String [not null]
+  content contents [not null]
+  contentId String [not null]
+  rankPosition Int [not null]
+  createdAt DateTime [default: `now()`, not null]
+
+  indexes {
+    (documentId, contentId) [pk]
+  }
+}
+
+Table contents {
+  id String [pk]
+  title String [not null]
+  metaDescription String
+  source ContentSource [not null]
+  wordCount Int
+  imageCount Int
+  videoCount Int
+  secondaryKeywords String
+  objectives String
+  publicationDate DateTime
+  country countries
+  countryIsoCode String [not null]
+  language languages
+  languageIsoCode String [not null]
+  outlines outlines [not null]
+  websiteUrl String
+  contentType ContentType
+  favicon String
+  resumeStatus ContentResumeStatus [not null, default: 'INITIAL']
+  resumeResponseUrl String
+  documents documents_websites [not null]
+  briefingDocument documents
+  additionalComments String
+  createdAt DateTime [default: `now()`, not null]
+  updatedAt DateTime [not null]
+  deletedAt DateTime
+}
+
+Table outlines {
+  content contents [not null]
+  contentId String [not null]
+  order Int [not null]
+  tag OutlineTag [not null]
+  value String [not null]
+
+  indexes {
+    (contentId, order) [pk]
+  }
+}
+
+Table usage {
+  id String [pk]
+  account accounts [not null]
+  accountId String [not null]
+  organization organizations
+  organizationId String
+  type UsageType [not null]
+  content String [not null]
+  wordCount Int [not null]
+  createdAt DateTime [default: `now()`, not null]
+  BulkContentItemUsage bulk_content_item_usage [not null]
+  DocumentUsage document_usage [not null]
+}
+
+Table models {
+  id String [pk]
+  name String [unique, not null]
+  description String [not null, default: '']
+  maxTokens Int [not null]
+  multiplier Float [not null]
+  conversations conversations [not null]
+}
+
+Table bulk_content {
+  id String [pk]
+  title String [not null]
+  createdAt DateTime [default: `now()`, not null]
+  rowCount Int [not null]
+  status BulkContentStatus [not null, default: 'INITIAL']
+  type BulkContentType [not null]
+  account accounts [not null]
+  accountId String [not null]
+  organization organizations
+  organizationId String
+  BulkContentItem bulk_content_item [not null]
+}
+
+Table bulk_content_item {
+  id String [pk]
+  bulkContent bulk_content [not null]
+  bulkContentId String [not null]
+  content Json [not null]
+  status BulkContentItemStatus [not null]
+  BulkContentItemUsage bulk_content_item_usage [not null]
+}
+
+Table bulk_content_item_usage {
+  bulkContentItem bulk_content_item [not null]
+  bulkContentItemId String [not null]
+  usage usage [not null]
+  usageId String [not null]
+
+  indexes {
+    (bulkContentItemId, usageId) [pk]
+  }
+}
+
+Table document_usage {
+  document documents [not null]
+  documentId String [not null]
+  usage usage [not null]
+  usageId String [not null]
+
+  indexes {
+    (documentId, usageId) [pk]
+  }
+}
+
+Enum Role {
+  SYSTEM
+  USER
+  ASSISTANT
+  FUNCTION
+}
+
+Enum DocumentStatus {
+  BRIEFING
+  CREATION
+  OPTIMIZATION
+  REVISION
+  REPROVED
+  ARCHIVED
+  PUBLISHED
+}
+
+Enum DocumentReferencesAnalysisStatus {
+  INITIAL
+  SERP_DONE
+  FULL_DONE
+}
+
+Enum ContentSource {
+  BRIEFING
+  WEBSITE
+}
+
+Enum ContentResumeStatus {
+  INITIAL
+  LOADING
+  SUCCESS
+  ERROR
+}
+
+Enum OutlineTag {
+  H1
+  H2
+  H3
+  H4
+  H5
+  H6
+}
+
+Enum UsageType {
+  META_DESC
+  META_TITLE
+  BULK_CONTENT
+}
+
+Enum ContentType {
+  HTML
+  JSON
+  XML
+  PLAIN
+  IMAGE
+  PDF
+  WORD
+  EXCEL
+  POWER_POINT
+  AUDIO
+  VIDEO
+  CSV
+  OTHER
+  NOT_FOUND
+}
+
+Enum BulkContentType {
+  PRODUCT_DESCRIPTION
+  META_TITLE
+  META_DESC
+  IMAGE_SEO
+}
+
+Enum BulkContentStatus {
+  INITIAL
+  PENDING
+  FINISHED
+}
+
+Enum BulkContentItemStatus {
+  INITIAL
+  PROCESSING
+  SUCCESS
+  ERROR
+  INSUFFICIENT_CREDITS
+}
+
+Ref: accounts.organizationId - organizations.id
+
+Ref: conversations.accountId > accounts.id
+
+Ref: conversations.organizationId > organizations.id
+
+Ref: conversations.modelId > models.id
+
+Ref: messages.conversationId > conversations.id [delete: Cascade]
+
+Ref: entries.accountId > accounts.id
+
+Ref: entries.organizationId > organizations.id
+
+Ref: organizations.ownerAccountId - accounts.id
+
+Ref: projects.accountId > accounts.id
+
+Ref: projects.organizationId > organizations.id
+
+Ref: documents.countryIsoCode > countries.isoCode
+
+Ref: documents.languageIsoCode > languages.isoCode
+
+Ref: documents.projectId > projects.id
+
+Ref: documents.accountId > accounts.id
+
+Ref: documents.organizationId > organizations.id
+
+Ref: documents.briefingId - contents.id
+
+Ref: documents_websites.documentId > documents.id
+
+Ref: documents_websites.contentId > contents.id
+
+Ref: contents.countryIsoCode > countries.isoCode
+
+Ref: contents.languageIsoCode > languages.isoCode
+
+Ref: outlines.contentId > contents.id
+
+Ref: usage.accountId > accounts.id
+
+Ref: usage.organizationId > organizations.id
+
+Ref: bulk_content.accountId > accounts.id
+
+Ref: bulk_content.organizationId > organizations.id
+
+Ref: bulk_content_item.bulkContentId > bulk_content.id
+
+Ref: bulk_content_item_usage.bulkContentItemId > bulk_content_item.id
+
+Ref: bulk_content_item_usage.usageId > usage.id
+
+Ref: document_usage.documentId > documents.id
+
+Ref: document_usage.usageId > usage.id

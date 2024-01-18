@@ -1,0 +1,400 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider          = "postgresql"
+  url               = env("DATABASE_URL")
+  directUrl         = env("DIRECT_URL")
+  shadowDatabaseUrl = env("SHADOW_DATABASE_URL")
+}
+
+model Account {
+  id                    String         @id @default(cuid())
+  email                 String         @unique
+  firstName             String?
+  lastName              String?
+  clerkUserId           String         @unique
+  stripeCustomerId      String?        @unique
+  stripeSubscriptionId  String?
+  stripePlanId          String?
+  credits               Int?           @default(0)
+  documentCredits       Int?           @default(0)
+  subscriptionStartDate DateTime?
+  subscriptionEndDate   DateTime?
+  isActive              Boolean        @default(false)
+  isBeta                Boolean        @default(false)
+  isTrial               Boolean        @default(false)
+  createdAt             DateTime       @default(now())
+  updatedAt             DateTime       @updatedAt
+  deletedAt             DateTime?
+  conversations         Conversation[]
+  entries               Entry[]
+  organization          Organization?  @relation("organization", fields: [organizationId], references: [id])
+  ownedOrganization     Organization?  @relation("ownerAccount")
+  organizationId        String?
+  projects              Project[]
+  documents             Document[]
+  Usage                 Usage[]
+  BulkContent           BulkContent[]
+
+  @@map("accounts")
+}
+
+model Conversation {
+  id             String        @id @default(cuid())
+  title          String        @db.Text
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  function       String?
+  chatHistory    String?
+  account        Account       @relation(fields: [accountId], references: [id])
+  accountId      String
+  messages       Message[]
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  model          Model?        @relation(fields: [modelId], references: [id])
+  modelId        String?
+
+  @@map("conversations")
+}
+
+model Message {
+  id             String       @id @default(cuid())
+  type           Role
+  content        String       @db.Text
+  wordCount      Int
+  completion     String?      @db.Text
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+  deletedAt      DateTime?
+  conversation   Conversation @relation(fields: [conversationId], references: [id], onUpdate: Cascade, onDelete: Cascade)
+  conversationId String
+
+  @@map("messages")
+}
+
+model Entry {
+  id             String        @id @default(cuid())
+  content        String        @db.Text
+  wordCount      Int
+  completion     Json?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  templateId     String
+  account        Account       @relation(fields: [accountId], references: [id])
+  accountId      String
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+
+  @@map("entries")
+}
+
+model Organization {
+  id             String         @id @default(cuid())
+  clerkOrgId     String?        @unique
+  name           String
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  deletedAt      DateTime?
+  ownerAccount   Account        @relation("ownerAccount", fields: [ownerAccountId], references: [id])
+  ownerAccountId String         @unique
+  members        Account[]      @relation("organization")
+  entries        Entry[]
+  conversations  Conversation[]
+  projects       Project[]
+  documents      Document[]
+  Usage          Usage[]
+  BulkContent    BulkContent[]
+
+  @@map("organizations")
+}
+
+enum Role {
+  SYSTEM
+  USER
+  ASSISTANT
+  FUNCTION
+}
+
+model Project {
+  id             String        @id @default(cuid())
+  name           String
+  archived       Boolean       @default(false)
+  account        Account       @relation(fields: [accountId], references: [id])
+  accountId      String
+  organization   Organization? @relation(fields: [organizationId], references: [id])
+  organizationId String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  deletedAt      DateTime?
+  documents      Document[]
+
+  @@map("projects")
+}
+
+enum DocumentStatus {
+  BRIEFING
+  CREATION
+  OPTIMIZATION
+  REVISION
+  REPROVED
+  ARCHIVED
+  PUBLISHED
+}
+
+model Country {
+  isoCode   String     @id
+  name      String
+  isActive  Boolean    @default(true)
+  documents Document[]
+  contents  Content[]
+
+  @@map("countries")
+}
+
+model Language {
+  isoCode   String     @id
+  name      String
+  isActive  Boolean    @default(true)
+  documents Document[]
+  contents  Content[]
+
+  @@map("languages")
+}
+
+enum DocumentReferencesAnalysisStatus {
+  INITIAL
+  SERP_DONE
+  FULL_DONE
+}
+
+model Document {
+  id                       String                           @id @default(cuid())
+  keyword                  String
+  country                  Country                          @relation(fields: [countryIsoCode], references: [isoCode])
+  language                 Language                         @relation(fields: [languageIsoCode], references: [isoCode])
+  project                  Project                          @relation(fields: [projectId], references: [id])
+  projectId                String
+  account                  Account                          @relation(fields: [accountId], references: [id])
+  accountId                String
+  organization             Organization?                    @relation(fields: [organizationId], references: [id])
+  organizationId           String?
+  status                   DocumentStatus
+  createdAt                DateTime                         @default(now())
+  updatedAt                DateTime                         @updatedAt
+  deletedAt                DateTime?
+  briefing                 Content?                         @relation("briefingContent", fields: [briefingId], references: [id])
+  briefingId               String?                          @unique
+  websites                 DocumentWebsite[]
+  countryIsoCode           String
+  languageIsoCode          String
+  serpSearchId             String?
+  serpSearchDate           DateTime?
+  referencesAnalysisStatus DocumentReferencesAnalysisStatus @default(INITIAL)
+  DocumentUsage            DocumentUsage[]
+
+  @@map("documents")
+}
+
+enum ContentSource {
+  BRIEFING
+  WEBSITE
+}
+
+enum ContentResumeStatus {
+  INITIAL
+  LOADING
+  SUCCESS
+  ERROR
+}
+
+model DocumentWebsite {
+  document     Document @relation(fields: [documentId], references: [id])
+  documentId   String
+  content      Content  @relation(fields: [contentId], references: [id])
+  contentId    String
+  rankPosition Int
+  createdAt    DateTime @default(now())
+
+  @@id([documentId, contentId])
+  @@map("documents_websites")
+}
+
+model Content {
+  id                 String              @id @default(cuid())
+  title              String
+  metaDescription    String?
+  source             ContentSource
+  wordCount          Int?
+  imageCount         Int?
+  videoCount         Int?
+  secondaryKeywords  String?
+  objectives         String?
+  publicationDate    DateTime?
+  country            Country?            @relation(fields: [countryIsoCode], references: [isoCode])
+  countryIsoCode     String
+  language           Language?           @relation(fields: [languageIsoCode], references: [isoCode])
+  languageIsoCode    String
+  outlines           Outline[]
+  // [START ContentSource == WEBSITE]
+  websiteUrl         String?
+  contentType        ContentType?
+  favicon            String?
+  resumeStatus       ContentResumeStatus @default(INITIAL)
+  resumeResponseUrl  String?
+  documents          DocumentWebsite[]
+  // [END ContentSource == WEBSITE]
+  // [START ContentSource == BRIEFING]
+  briefingDocument   Document?           @relation("briefingContent")
+  additionalComments String?
+  // [END ContentSource == BRIEFING]
+  createdAt          DateTime            @default(now())
+  updatedAt          DateTime            @updatedAt
+  deletedAt          DateTime?
+
+  @@map("contents")
+}
+
+enum OutlineTag {
+  H1
+  H2
+  H3
+  H4
+  H5
+  H6
+}
+
+model Outline {
+  content   Content    @relation(fields: [contentId], references: [id])
+  contentId String
+  order     Int
+  tag       OutlineTag
+  value     String
+
+  @@id([contentId, order])
+  @@map("outlines")
+}
+
+model Usage {
+  id                   String                 @id @default(cuid())
+  account              Account                @relation(fields: [accountId], references: [id])
+  accountId            String
+  organization         Organization?          @relation(fields: [organizationId], references: [id])
+  organizationId       String?
+  type                 UsageType
+  content              String
+  wordCount            Int
+  createdAt            DateTime               @default(now())
+  BulkContentItemUsage BulkContentItemUsage[]
+  DocumentUsage        DocumentUsage[]
+
+  @@map("usage")
+}
+
+enum UsageType {
+  META_DESC
+  META_TITLE
+  BULK_CONTENT
+}
+
+model Model {
+  id            String         @id @default(cuid())
+  name          String         @unique
+  description   String         @default("")
+  maxTokens     Int
+  multiplier    Float
+  conversations Conversation[]
+
+  @@map("models")
+}
+
+enum ContentType {
+  HTML
+  JSON
+  XML
+  PLAIN
+  IMAGE
+  PDF
+  WORD
+  EXCEL
+  POWER_POINT
+  AUDIO
+  VIDEO
+  CSV
+  OTHER
+  NOT_FOUND
+}
+
+model BulkContent {
+  id              String            @id @default(cuid())
+  title           String
+  createdAt       DateTime          @default(now())
+  rowCount        Int
+  status          BulkContentStatus @default(INITIAL)
+  type            BulkContentType
+  account         Account           @relation(fields: [accountId], references: [id])
+  accountId       String
+  organization    Organization?     @relation(fields: [organizationId], references: [id])
+  organizationId  String?
+  BulkContentItem BulkContentItem[]
+
+  @@map("bulk_content")
+}
+
+enum BulkContentType {
+  PRODUCT_DESCRIPTION
+  META_TITLE
+  META_DESC
+  IMAGE_SEO
+}
+
+enum BulkContentStatus {
+  INITIAL
+  PENDING
+  FINISHED
+}
+
+model BulkContentItem {
+  id                   String                 @id @default(cuid())
+  bulkContent          BulkContent            @relation(fields: [bulkContentId], references: [id])
+  bulkContentId        String
+  content              Json
+  status               BulkContentItemStatus
+  BulkContentItemUsage BulkContentItemUsage[]
+
+  @@map("bulk_content_item")
+}
+
+enum BulkContentItemStatus {
+  INITIAL
+  PROCESSING
+  SUCCESS
+  ERROR
+  INSUFFICIENT_CREDITS
+}
+
+model BulkContentItemUsage {
+  bulkContentItem   BulkContentItem @relation(fields: [bulkContentItemId], references: [id])
+  bulkContentItemId String
+  usage             Usage           @relation(fields: [usageId], references: [id])
+  usageId           String
+
+  @@id([bulkContentItemId, usageId])
+  @@map("bulk_content_item_usage")
+}
+
+model DocumentUsage {
+  document   Document @relation(fields: [documentId], references: [id])
+  documentId String
+  usage      Usage    @relation(fields: [usageId], references: [id])
+  usageId    String
+
+  @@id([documentId, usageId])
+  @@map("document_usage")
+}
