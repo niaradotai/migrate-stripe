@@ -11,6 +11,10 @@ const stripe = new Stripe(process.env.NIARA_STRIPE_SECRET_KEY!, {
   apiVersion: "2023-10-16",
 });
 
+const stripeOld = new Stripe(process.env.NIARA_STRIPE_SECRET_KEY_OLD!, {
+  apiVersion: "2023-10-16",
+});
+
 const plansMap = new Map()
   .set("price_1NfqrmLVeyUUcwQSzITtP5jK", {
     name: "Plano Solo",
@@ -45,19 +49,9 @@ const plansMap = new Map()
     newId: "price_1OX6FWLtBF5Auvn50EF4MoTF",
   });
 
-const getUnixTime = (date: string) => {
-  const [year, month, day] = date
-    .replaceAll("-", " ")
-    .replaceAll(":", " ")
-    .split(" ")
-    .map(Number);
-
-  return dayjs(new Date(year, month - 1, day, 20, 50)).unix();
-};
-
 async function main() {
   const subscriptions = await parseCSVToJSON(
-    path.resolve(".", "test-subscriptions-all.csv")
+    path.resolve(".", "test-subscriptions-all-gmt.csv")
   );
 
   const invalidSubscriptions: Subscription[] = [];
@@ -65,6 +59,12 @@ async function main() {
 
   try {
     for (const subscription of subscriptions) {
+      const oldSubscription = await stripeOld.subscriptions.retrieve(
+        subscription.id
+      );
+
+      const oldPeriodEnd = oldSubscription.current_period_end;
+
       const {
         id: oldSubscriptionId,
         customer_id,
@@ -85,51 +85,29 @@ async function main() {
         continue;
       }
 
-      const [_, __, dayStartDate] = start_date
-        .replaceAll("-", " ")
-        .replaceAll(":", " ")
-        .split(" ")
-        .map(Number);
-
-      const today = dayjs().date();
-      const billingCycleAnchor =
-        dayStartDate < today
-          ? dayjs().date(dayStartDate).add(1, "month")
-          : dayjs().date(dayStartDate);
+      const billingCycleAnchor = oldPeriodEnd;
 
       const trialEndUnixTimestamp =
-        trial_end === "" ? undefined : getUnixTime(trial_end);
-      const startDateTimestamp = getUnixTime(start_date);
+        oldSubscription.trial_end == null
+          ? undefined
+          : oldSubscription.trial_end;
 
-      console.log(subscription);
-      console.log(
-        "billingCycleAnchor",
-        new Date(billingCycleAnchor.unix() * 1000)
-      );
-      console.log("trialEndUnixTimestamp", new Date(startDateTimestamp * 1000));
-      console.log("startDateTimestamp", startDateTimestamp);
+      const startDateTimestamp = oldSubscription.start_date;
 
       const account = await prisma.account.findUnique({
         where: { stripeCustomerId: customer_id },
       });
 
       if (account) {
-        const customer = (await stripe.customers.retrieve(
-          customer_id
-        )) as Stripe.Customer;
-
         // call stripe api to create new subscription
         const newSubscription = await stripe.subscriptions.create({
-          customer: customer_id,
+          customer: oldSubscription.customer as string,
           items: [{ price: newPlanId }],
           ...(status !== "trialing" && {
-            billing_cycle_anchor: billingCycleAnchor.unix(),
+            billing_cycle_anchor: billingCycleAnchor,
             proration_behavior: "none",
             backdate_start_date: startDateTimestamp,
           }),
-          default_payment_method:
-            (customer.invoice_settings.default_payment_method as string) ??
-            undefined,
           cancel_at_period_end: cancel_at_period_end === "true" ? true : false,
           trial_end: status === "trialing" ? trialEndUnixTimestamp : undefined,
           metadata: {
