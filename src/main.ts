@@ -106,11 +106,13 @@ async function main() {
           ...(status !== "trialing" && {
             billing_cycle_anchor: billingCycleAnchor,
             proration_behavior: "none",
-            backdate_start_date: startDateTimestamp,
           }),
           cancel_at_period_end: cancel_at_period_end === "true" ? true : false,
           trial_end: status === "trialing" ? trialEndUnixTimestamp : undefined,
           metadata: {
+            oldStartSubscriptionDate: dayjs(
+              startDateTimestamp * 1000
+            ).toISOString(),
             oldSubscriptionId,
             oldPlanId,
             payingClerkUserId,
