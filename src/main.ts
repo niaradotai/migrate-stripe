@@ -92,21 +92,28 @@ async function main(isLive = false) {
 
   const invalidSubscriptions: Subscription[] = [];
   const notFoundAccountsCustomersIds: string[] = [];
-  const deviantSubscriptions: Stripe.Response<Stripe.Subscription>[] = [];
+  const deviantSubscriptions: {
+    customerId: string;
+    newSubscriptionId: string;
+    oldSubscriptionId: string;
+    oldStatus: string;
+    newStatus: string;
+  }[] = [];
 
   const checkForDeviations = (
     oldSub: Stripe.Response<Stripe.Subscription>,
     newSub: Stripe.Response<Stripe.Subscription>
   ) => {
-    const billingCycleAnchorExists =
-      oldSub.billing_cycle_anchor == newSub.billing_cycle_anchor;
+    const statusIsEqual = oldSub.status === newSub.status;
 
-    const planExists = plansMap.get(newSub.metadata.oldPlanId)?.newId;
-
-    const statusIsEqual = oldSub.status == newSub.status;
-
-    if (!billingCycleAnchorExists || !planExists || !statusIsEqual) {
-      deviantSubscriptions.push(oldSub);
+    if (!statusIsEqual) {
+      deviantSubscriptions.push({
+        customerId: oldSub.customer as string,
+        newSubscriptionId: newSub.id,
+        oldSubscriptionId: oldSub.id,
+        oldStatus: oldSub.status,
+        newStatus: newSub.status,
+      });
     }
   };
 
