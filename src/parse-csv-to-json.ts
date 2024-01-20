@@ -27,6 +27,9 @@ export async function parseCSVToJSON(path: string): Promise<Subscription[]> {
   });
 
   return parsedJSON.filter(
-    (row) => row.status === "active" || row.status === "trialing"
+    (row) =>
+      row.status === "active" ||
+      row.status === "trialing" ||
+      row.status === "past_due"
   ) as unknown as Subscription[];
 }
